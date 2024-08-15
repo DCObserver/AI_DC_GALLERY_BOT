@@ -1,0 +1,4 @@
+aiohttp
+google-cloud
+google-generativeai
+dc-api

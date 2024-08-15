@@ -1,0 +1,12 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+galling-bot/
+
+# Data files
+Data/
+
+# Other
+*.log
