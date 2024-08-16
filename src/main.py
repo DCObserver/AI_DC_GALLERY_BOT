@@ -42,7 +42,7 @@ async def run_gallery_bot(api_key, bot_settings):
         gpt_api_manager = GptApiManager(api_key=api_key, model_name=MODEL_NAME, generation_config=GENERATION_CONFIG)
 
         bot = DcinsideBot(
-            api_manager=dc_api_manager.api,
+            api_manager=dc_api_manager,
             db_managers=db_managers,
             gpt_api_manager=gpt_api_manager,
             persona=bot_settings['persona'],

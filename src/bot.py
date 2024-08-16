@@ -28,7 +28,7 @@ class DcinsideBot:
         :return: 유행하는 토픽의 Counter 객체
         """
         try:
-            articles = [article async for article in self.api_manager.board(
+            articles = [article async for article in self.api_manager.api.board(
                 board_id=self.settings['board_id'],
                 num=self.settings['crawl_article_count']
             )]
@@ -48,7 +48,7 @@ class DcinsideBot:
             return
 
         try:
-            articles = [article async for article in self.api_manager.board(
+            articles = [article async for article in self.api_manager.api.board(
                 board_id=self.settings['board_id'],
                 num=self.settings['crawl_article_count']
             )]
@@ -78,7 +78,10 @@ class DcinsideBot:
         크롤링 정보:
         {crawling_info}
         """
-        return await self.gpt_api_manager.generate_content(prompt)
+        content = await self.gpt_api_manager.generate_content(prompt)
+        logging.info(f"Generated content: {content}")  # 추가된 로깅
+        return content
+
 
     async def write_article(self, trending_topics, memory_data):
         """
