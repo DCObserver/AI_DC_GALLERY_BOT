@@ -6,11 +6,20 @@ import logging
 
 class DatabaseManager:
     def __init__(self, db_file, db_type):
+        """
+        데이터베이스 관리자를 초기화합니다.
+
+        :param db_file: 데이터베이스 파일 이름
+        :param db_type: 데이터베이스 유형 (crawling, data, memory)
+        """
         self.db_file = os.path.join(".", db_file)
         self.db_type = db_type
         self.conn = None  # 초기화에서 연결 객체는 None으로 설정
 
     async def connect(self):
+        """
+        데이터베이스에 비동기적으로 연결하고 테이블을 생성합니다.
+        """
         try:
             self.conn = await aiosqlite.connect(self.db_file)
             await self.create_tables()
@@ -20,6 +29,9 @@ class DatabaseManager:
             self.conn = None
 
     async def create_tables(self):
+        """
+        데이터베이스 유형에 따라 필요한 테이블을 생성합니다.
+        """
         if self.conn is None:
             logging.error("Connection to the database is not established.")
             return
@@ -62,6 +74,11 @@ class DatabaseManager:
             logging.error(f"Failed to create tables: {e}")
 
     async def save_data(self, **kwargs):
+        """
+        데이터베이스에 데이터를 저장합니다.
+
+        :param kwargs: 데이터베이스에 저장할 데이터 (키워드 인자)
+        """
         if self.conn is None:
             logging.error("Connection to the database is not established.")
             return
@@ -89,6 +106,12 @@ class DatabaseManager:
             logging.error(f"Failed to save data: {e}")
 
     async def load_memory(self, board_id):
+        """
+        'memory' 데이터베이스에서 메모리를 로드합니다.
+
+        :param board_id: 메모리를 로드할 게시판 ID
+        :return: 로드된 메모리 내용
+        """
         if self.conn is None:
             logging.error("Connection to the database is not established.")
             return ""
@@ -118,6 +141,9 @@ class DatabaseManager:
             return ""
 
     async def close(self):
+        """
+        데이터베이스 연결을 닫습니다.
+        """
         if self.conn:
             try:
                 await self.conn.close()
