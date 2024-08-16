@@ -1,4 +1,4 @@
-aiohttp
-google-cloud
+aiosqlite
 google-generativeai
-dc-api
+lxml
+aiohttp

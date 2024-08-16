@@ -1,12 +1,22 @@
-# Python bytecode
+# Python cache files
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 
 # Virtual environment
 galling-bot/
 
-# Data files
-Data/
-
-# Other
+# Log files
 *.log
+
+# Data files
+/data/
+
+# IDE specific files
+.idea/
+.vscode/
+
+# System files
+.DS_Store
+Thumbs.db
