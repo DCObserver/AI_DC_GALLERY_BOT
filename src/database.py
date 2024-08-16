@@ -1,5 +1,3 @@
-# database.py - Database management for different data types
-
 import aiosqlite
 import os
 import logging
@@ -12,18 +10,29 @@ class DatabaseManager:
         :param db_file: 데이터베이스 파일 이름
         :param db_type: 데이터베이스 유형 (crawling, data, memory)
         """
-        self.db_file = os.path.join(".", db_file)
+        self.db_file = os.path.join(".", db_file)  # 현재 디렉토리에 데이터베이스 파일 경로 설정
         self.db_type = db_type
-        self.conn = None  # 초기화에서 연결 객체는 None으로 설정
+        self.conn = None
 
     async def connect(self):
         """
         데이터베이스에 비동기적으로 연결하고 테이블을 생성합니다.
         """
         try:
+            # 데이터베이스 디렉토리 생성
+            db_dir = os.path.dirname(self.db_file)
+            if not os.path.exists(db_dir):
+                os.makedirs(db_dir)
+
+            # 데이터베이스 파일이 없으면 생성
+            if not os.path.exists(self.db_file):
+                open(self.db_file, 'a').close()  # 빈 파일을 생성합니다.
+
+            # 데이터베이스에 연결
             self.conn = await aiosqlite.connect(self.db_file)
             await self.create_tables()
-            logging.info(f"Connected to database {self.db_file} successfully.")
+            # 성공 메시지 삭제
+            # logging.info(f"Connected to database {self.db_file} successfully.")
         except Exception as e:
             logging.error(f"Failed to connect to the database: {e}")
             self.conn = None
@@ -69,7 +78,8 @@ class DatabaseManager:
                     )
                 ''')
             await self.conn.commit()
-            logging.info("Tables created successfully.")
+            # 성공 메시지 삭제
+            # logging.info("Tables created successfully.")
         except Exception as e:
             logging.error(f"Failed to create tables: {e}")
 
@@ -101,7 +111,8 @@ class DatabaseManager:
                     VALUES (:board_id, :memory_content)
                 ''', kwargs)
             await self.conn.commit()
-            logging.info(f"Data saved successfully: {kwargs}")
+            # 성공 메시지 삭제
+            # logging.info(f"Data saved successfully: {kwargs}")
         except Exception as e:
             logging.error(f"Failed to save data: {e}")
 
@@ -131,10 +142,12 @@ class DatabaseManager:
             ''', (board_id,))
             row = await cursor.fetchone()
             if row:
-                logging.info("Memory loaded successfully")
+                # 성공 메시지 삭제
+                # logging.info("Memory loaded successfully")
                 return row[0]
             else:
-                logging.info("No memory found")
+                # 성공 메시지 삭제
+                # logging.info("No memory found")
                 return ""
         except Exception as e:
             logging.error(f"Failed to load memory: {e}")
@@ -147,7 +160,8 @@ class DatabaseManager:
         if self.conn:
             try:
                 await self.conn.close()
-                logging.info("Database connection closed successfully.")
+                # 성공 메시지 삭제
+                # logging.info("Database connection closed successfully.")
             except Exception as e:
                 logging.error(f"Failed to close the database connection: {e}")
         else:

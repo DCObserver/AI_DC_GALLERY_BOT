@@ -2,3 +2,6 @@ aiosqlite
 google-generativeai
 lxml
 aiohttp
+python-dotenv
+dc_api==0.8.0
+filetype

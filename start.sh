@@ -20,16 +20,23 @@ source "$VENV_DIR/bin/activate"
 if [ -f "requirements.txt" ]; then
     echo "Installing dependencies..."
     pip install -r requirements.txt -q
+    if [ $? -ne 0 ]; then
+        echo "Error occurred during dependency installation."
+        deactivate
+        exit 1
+    fi
 else
     echo "No requirements.txt found, skipping dependency installation."
 fi
 
-# 환경 변수 설정 (필요에 따라 수정)
-export GOOGLE_API_KEY='your_google_api_key_here'
-
 # Python 스크립트 실행
 echo "Starting the bot..."
 python3 src/main.py
+if [ $? -ne 0 ]; then
+    echo "Error occurred while running the Python script."
+    deactivate
+    exit 1
+fi
 
 # 가상환경 비활성화
 deactivate

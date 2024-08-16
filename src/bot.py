@@ -1,8 +1,6 @@
-import asyncio
 import logging
 from collections import Counter
 from aiohttp import client_exceptions
-from gpt_api_manager import GptApiManager
 
 class DcinsideBot:
     def __init__(self, api_manager, db_managers, gpt_api_manager, persona, settings):
@@ -35,9 +33,7 @@ class DcinsideBot:
                 num=self.settings['crawl_article_count']
             )]
             title_list = [article.title for article in articles]
-            topic_counter = Counter(title_list)
-            logging.info(f"{self.settings['board_id']}에서 유행하는 토픽: {topic_counter}")
-            return topic_counter
+            return Counter(title_list)
         except client_exceptions.ContentTypeError as e:
             logging.error(f"유행하는 토픽 가져오기 실패 - 콘텐츠 유형 오류: {e}")
         except Exception as e:
@@ -57,13 +53,10 @@ class DcinsideBot:
                 num=self.settings['crawl_article_count']
             )]
             memory_content = await self.generate_memory_from_crawling(articles)
-
-            save_result = await self.memory_db.save_data(
+            await self.memory_db.save_data(
                 board_id=self.settings['board_id'],
                 memory_content=memory_content
             )
-            logging.info(f"메모리 저장 결과: {'성공' if save_result else '실패'}")
-            logging.info("갤러리 정보가 기록되었습니다.")
         except client_exceptions.ContentTypeError as e:
             logging.error(f"갤러리 정보 기록 실패 - 콘텐츠 유형 오류: {e}")
         except Exception as e:
@@ -85,8 +78,7 @@ class DcinsideBot:
         크롤링 정보:
         {crawling_info}
         """
-        memory_content = await self.gpt_api_manager.generate_content(prompt, stream=False)
-        return memory_content
+        return await self.gpt_api_manager.generate_content(prompt)
 
     async def write_article(self, trending_topics, memory_data):
         """
@@ -109,15 +101,12 @@ class DcinsideBot:
         {memory_data}
         글은 최대 700자로 작성해줘.
         """
-        content = await self.gpt_api_manager.generate_content(prompt, stream=False)
-
+        content = await self.gpt_api_manager.generate_content(prompt)
         if content:
-            # 제목과 내용을 첫 번째 줄 기준으로 분리
             title, body = content.split('\n', 1)
             title = title.replace("##", "").strip()
-
             doc_id = await self.api_manager.write_document(title, body)
-
+            
             if doc_id:
                 logging.info(f"게시글 작성 성공 (ID: {doc_id})")
                 await self.data_db.save_data(
