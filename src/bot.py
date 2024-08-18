@@ -1,8 +1,9 @@
 import logging
 import re
+import asyncio
 import time
 from collections import Counter
-from utils import handle_exceptions, sanitize_text
+from utils import handle_exceptions, sanitize_text, clean_title
 
 class DcinsideBot:
     def __init__(self, api_manager, db_managers, gpt_api_manager, persona, settings):
@@ -59,14 +60,8 @@ class DcinsideBot:
             board_id=self.board_id,
             memory_content=memory_content
         )
-
+            
     async def generate_memory_from_crawling(self, articles):
-        """
-        크롤링한 정보를 바탕으로 메모리 콘텐츠를 생성합니다.
-
-        :param articles: 크롤링한 기사들
-        :return: 생성된 메모리 콘텐츠
-        """
         crawling_info = "\n".join([f"제목: {article.title}, 저자: {article.author}" for article in articles])
         prompt = f"""
         {self.persona}
@@ -77,16 +72,14 @@ class DcinsideBot:
         {crawling_info}
         """
         content = await self.gpt_api_manager.generate_content(prompt)
+        
+        if content is None:
+            logging.error("GPT API returned None content")
+            return ""
+
         return sanitize_text(content)
 
     async def write_article(self, trending_topics, memory_data=None):
-        """
-        언어 모델을 이용하여 글 제목과 내용을 생성하고 게시합니다.
-
-        :param trending_topics: 최신 트렌딩 토픽
-        :param memory_data: 갤러리의 최근 정보
-        :return: 작성된 글의 문서 ID와 제목
-        """
         if not self.write_article_enabled:
             return None
 
@@ -95,7 +88,8 @@ class DcinsideBot:
         prompt = f"""
         {self.persona} 페르소나 규칙 꼭 지키기.
 
-        {self.board_id} 갤러리에 어울리는 흥미로운 글 제목을 짓고, 최근 유행하는 토픽을 참고하여 글을 쓰되, 페르소나에 맞춰서 작성해줘.
+        {self.board_id} 갤러리에 어울리는 흥미로운 글 제목과 내용을 한 번에 작성해줘.
+        최근 유행하는 토픽을 참고하여 제목과 글을 구성하고, 페르소나에 맞춰 작성해줘.
 
         최근 {self.board_id} 갤러리에서 유행하는 토픽은 다음과 같습니다:
         {trending_topics}
@@ -103,12 +97,11 @@ class DcinsideBot:
         특히 다음 토픽들을 중심으로 글 내용을 구성해줘:
         {', '.join(top_trending_topics)}
 
-        글 제목은 유행 토픽을 참고하여 새롭게 지어줘.
-        제목은 {self.persona}에 맞춰서 작성해줘.
-
         갤러리의 최근 정보를 참고하여 글 내용을 더욱 풍성하게 만들어줘:
         {memory_data}
-        글은 최대 300자로 작성해줘.
+        제목과 내용은 아래 형식으로 작성해줘:
+        제목: [제목 텍스트]
+        내용: [내용 텍스트]
         """
         while True:
             try:
@@ -116,19 +109,22 @@ class DcinsideBot:
                 
                 if not content:
                     raise ValueError("생성된 콘텐츠가 비어있습니다.")
-                
-                # 제목과 내용 분리
-                title, content = content.split('\n', 1)
-                title = sanitize_text(title).replace("##", "")
-                content = sanitize_text(content)
+
+                # 제목과 내용을 분리
+                title_match = re.search(r"제목:\s*(.*)", content)
+                content_match = re.search(r"내용:\s*(.*)", content)
+
+                if not title_match or not content_match:
+                    raise ValueError("제목 또는 내용을 찾을 수 없습니다.")
+
+                title = sanitize_text(title_match.group(1))
+                content = sanitize_text(content_match.group(1))
 
                 doc_id = await self.api_manager.write_document(
                     title=title,
                     content=content
                 )
-                # 성공 메시지 삭제
 
-                # 데이터 저장
                 await self.data_db.save_data(
                     content_type="article",
                     doc_id=doc_id,
@@ -142,24 +138,18 @@ class DcinsideBot:
                 await asyncio.sleep(self.settings['article_interval'])
 
     async def write_comment(self, document_id, article_title):
-        """
-        언어 모델을 이용하여 댓글 내용을 생성하고 게시합니다.
-
-        :param document_id: 문서 ID
-        :param article_title: 글 제목
-        :return: 댓글 작성 성공 여부
-        """
         if not self.write_comment_enabled:
             return None
 
         prompt = f"""
         {self.persona}
 
-        다음 글에 대한 댓글을 페르소나에 충실하게 작성해.
+        다음 글에 대한 댓글을 페르소나에 충실하게 작성해줘.
 
-        댓글 작성에 제목 내용 참고: {article_title}
+        글 제목: {article_title}
 
-        댓글은 페르소나에 충실하게 작성해. 댓글은 최대 120자.
+        댓글은 아래 형식으로 작성해줘:
+        댓글: [댓글 텍스트]
         """
         while True:
             try:
@@ -167,17 +157,21 @@ class DcinsideBot:
 
                 if not content:
                     raise ValueError("생성된 콘텐츠가 비어있습니다.")
-                
-                comment_content = sanitize_text(content).strip()
+
+                # "댓글:"으로 시작하는 텍스트를 파싱하여 추출
+                comment_match = re.search(r"댓글:\s*(.*)", content)
+                if not comment_match:
+                    raise ValueError("댓글 텍스트를 찾을 수 없습니다.")
+
+                comment_content = sanitize_text(comment_match.group(1)).strip()
 
                 comm_id = await self.api_manager.write_comment(
                     document_id=document_id,
                     content=comment_content
                 )
-                first_sentence = comment_content.split('\n')[0]
-                # 성공 메시지 삭제
 
-                # 데이터 저장
+                first_sentence = comment_content.split('\n')[0]
+
                 await self.data_db.save_data(
                     content_type="comment",
                     doc_id=document_id,

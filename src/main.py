@@ -36,8 +36,8 @@ async def run_gallery_bot(api_key, bot_settings):
         # 데이터베이스 연결
         await asyncio.gather(*[db_manager.connect() for db_manager in db_managers.values()])
 
-        # GptApiManager 객체 생성
-        gpt_api_manager = GptApiManager(api_key=api_key, model_name=MODEL_NAME, generation_config=GENERATION_CONFIG)
+        # GptApiManager 객체 생성 (ChatGPT 사용)
+        gpt_api_manager = GptApiManager(api_key=api_key)
 
         # DcinsideBot 객체 생성
         bot = DcinsideBot(
@@ -54,9 +54,6 @@ async def run_gallery_bot(api_key, bot_settings):
         start_time = time.time()
 
         async def article_task():
-            """
-            트렌딩 토픽을 기반으로 글을 작성합니다.
-            """
             while True:
                 trending_topics = await bot.get_trending_topics()
                 memory_data = await bot.memory_db.load_memory(bot.settings['board_id']) if bot.settings.get('load_memory_enabled', True) else ""
@@ -64,9 +61,6 @@ async def run_gallery_bot(api_key, bot_settings):
                 await asyncio.sleep(bot.settings['article_interval'])
 
         async def comment_task():
-            """
-            랜덤 문서에 댓글을 작성합니다.
-            """
             while True:
                 doc_info = await dc_api_manager.get_random_document_info()
                 if doc_info:
@@ -76,10 +70,8 @@ async def run_gallery_bot(api_key, bot_settings):
                     logging.error("문서 ID나 제목을 가져오지 못했습니다.")
                 await asyncio.sleep(bot.settings['comment_interval'])
 
-        # 두 작업을 병렬로 실행
         await asyncio.gather(article_task(), comment_task())
 
-        # 시간 제한 설정이 활성화된 경우 실행 시간 체크
         if bot.settings.get('use_time_limit', False) and (time.time() - start_time) > bot.settings['max_run_time']:
             return
 
@@ -87,14 +79,10 @@ async def run_gallery_bot(api_key, bot_settings):
         logging.error(f"봇 실행 중 오류 발생: {e}")
 
     finally:
-        # 데이터베이스 연결 종료
         await asyncio.gather(*[db_manager.close() for db_manager in db_managers.values()])
         await dc_api_manager.close()  # 세션 명시적으로 종료
 
 async def main():
-    """
-    메인 실행 함수
-    """
     current_api_key_index = 0
     yjrs_bot = DEFAULT_BOT_SETTINGS.copy()
     yjrs_bot.update({'board_id': 'yjrs'})
