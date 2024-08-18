@@ -1,6 +1,6 @@
 import unittest
 import asyncio
-from database import DatabaseManager
+from database_manager import DatabaseManager
 
 class TestDatabaseManager(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

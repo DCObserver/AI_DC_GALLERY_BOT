@@ -10,31 +10,28 @@ class DatabaseManager:
         :param db_file: 데이터베이스 파일 이름
         :param db_type: 데이터베이스 유형 (crawling, data, memory)
         """
-        self.db_file = os.path.join(".", db_file)  # 현재 디렉토리에 데이터베이스 파일 경로 설정
+        self.db_file = os.path.join(".", db_file)
         self.db_type = db_type
         self.conn = None
 
     async def connect(self):
         """
-        데이터베이스에 비동기적으로 연결하고 테이블을 생성합니다.
+        데이터베이스에 비동기적으로 연결하고 필요한 테이블을 생성합니다.
         """
         try:
             # 데이터베이스 디렉토리 생성
             db_dir = os.path.dirname(self.db_file)
-            if not os.path.exists(db_dir):
-                os.makedirs(db_dir)
+            os.makedirs(db_dir, exist_ok=True)
 
-            # 데이터베이스 파일이 없으면 생성
+            # 데이터베이스 파일이 존재하지 않으면 생성
             if not os.path.exists(self.db_file):
-                open(self.db_file, 'a').close()  # 빈 파일을 생성합니다.
+                open(self.db_file, 'a').close()
 
-            # 데이터베이스에 연결
+            # 데이터베이스 연결
             self.conn = await aiosqlite.connect(self.db_file)
             await self.create_tables()
-            # 성공 메시지 삭제
-            # logging.info(f"Connected to database {self.db_file} successfully.")
         except Exception as e:
-            logging.error(f"Failed to connect to the database: {e}")
+            logging.error(f"데이터베이스 연결 실패: {e}")
             self.conn = None
 
     async def create_tables(self):
@@ -42,7 +39,7 @@ class DatabaseManager:
         데이터베이스 유형에 따라 필요한 테이블을 생성합니다.
         """
         if self.conn is None:
-            logging.error("Connection to the database is not established.")
+            logging.error("데이터베이스 연결이 설정되지 않았습니다.")
             return
 
         try:
@@ -61,9 +58,9 @@ class DatabaseManager:
                 await cursor.execute('''
                     CREATE TABLE IF NOT EXISTS generated_content (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        content_type TEXT,  -- 'article' 또는 'comment'
-                        doc_id TEXT,  -- 글 ID (댓글의 경우, 관련 글 ID)
-                        content TEXT,  -- 글/댓글 내용
+                        content_type TEXT,
+                        doc_id TEXT,
+                        content TEXT,
                         board_id TEXT,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
@@ -78,10 +75,8 @@ class DatabaseManager:
                     )
                 ''')
             await self.conn.commit()
-            # 성공 메시지 삭제
-            # logging.info("Tables created successfully.")
         except Exception as e:
-            logging.error(f"Failed to create tables: {e}")
+            logging.error(f"테이블 생성 실패: {e}")
 
     async def save_data(self, **kwargs):
         """
@@ -90,7 +85,7 @@ class DatabaseManager:
         :param kwargs: 데이터베이스에 저장할 데이터 (키워드 인자)
         """
         if self.conn is None:
-            logging.error("Connection to the database is not established.")
+            logging.error("데이터베이스 연결이 설정되지 않았습니다.")
             return
 
         try:
@@ -111,10 +106,8 @@ class DatabaseManager:
                     VALUES (:board_id, :memory_content)
                 ''', kwargs)
             await self.conn.commit()
-            # 성공 메시지 삭제
-            # logging.info(f"Data saved successfully: {kwargs}")
         except Exception as e:
-            logging.error(f"Failed to save data: {e}")
+            logging.error(f"데이터 저장 실패: {e}")
 
     async def load_memory(self, board_id):
         """
@@ -124,11 +117,11 @@ class DatabaseManager:
         :return: 로드된 메모리 내용
         """
         if self.conn is None:
-            logging.error("Connection to the database is not established.")
+            logging.error("데이터베이스 연결이 설정되지 않았습니다.")
             return ""
 
         if self.db_type != "memory":
-            logging.warning("Memory data can only be loaded from the 'memory' database.")
+            logging.warning("메모리 데이터는 'memory' 데이터베이스에서만 로드할 수 있습니다.")
             return ""
 
         try:
@@ -141,16 +134,9 @@ class DatabaseManager:
                 LIMIT 1
             ''', (board_id,))
             row = await cursor.fetchone()
-            if row:
-                # 성공 메시지 삭제
-                # logging.info("Memory loaded successfully")
-                return row[0]
-            else:
-                # 성공 메시지 삭제
-                # logging.info("No memory found")
-                return ""
+            return row[0] if row else ""
         except Exception as e:
-            logging.error(f"Failed to load memory: {e}")
+            logging.error(f"메모리 로드 실패: {e}")
             return ""
 
     async def close(self):
@@ -160,9 +146,7 @@ class DatabaseManager:
         if self.conn:
             try:
                 await self.conn.close()
-                # 성공 메시지 삭제
-                # logging.info("Database connection closed successfully.")
             except Exception as e:
-                logging.error(f"Failed to close the database connection: {e}")
+                logging.error(f"데이터베이스 연결 닫기 실패: {e}")
         else:
-            logging.warning("No database connection to close.")
+            logging.warning("닫을 데이터베이스 연결이 없습니다.")
