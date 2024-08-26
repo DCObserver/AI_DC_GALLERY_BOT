@@ -1,0 +1,20 @@
+# Asynchronous SQLite database library
+aiosqlite
+
+# OpenAI API client library
+openai
+
+# XML and HTML processing library
+lxml
+
+# Asynchronous HTTP client library
+aiohttp
+
+# Environment variable loader
+python-dotenv
+
+# DCInside API library (지정된 버전 사용)
+dc_api
+
+# File type detection library
+filetype
